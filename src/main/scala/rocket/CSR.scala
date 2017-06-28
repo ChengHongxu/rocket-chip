@@ -154,6 +154,12 @@ class CSRFileIO(implicit p: Parameters) extends CoreBundle
   val interrupt_cause = UInt(OUTPUT, xLen)
   val bp = Vec(nBreakpoints, new BP).asOutput
   val events = Vec(nPerfEvents, Bool()).asInput
+
+  // Add ipc port to expose instret and cycle
+  val ipc = new Bundle{
+    val instr = UInt(OUTPUT, 64.W)
+    val cycle = UInt(OUTPUT, 64.W)
+  }
 }
 
 class CSRFile(implicit p: Parameters) extends CoreModule()(p)
@@ -242,6 +248,11 @@ class CSRFile(implicit p: Parameters) extends CoreModule()(p)
 
   val reg_instret = WideCounter(64, io.retire)
   val reg_cycle = if (enableCommitLog) reg_instret else WideCounter(64)
+
+  // connect cycle and instret of CSRFile to IPCPort <ChengHongxu>
+  io.ipc.instr := reg_instret
+  io.ipc.cycle := reg_cycle
+
   val reg_hpmevent = Seq.fill(nPerfCounters)(if (nPerfEvents > 1) Reg(UInt(width = log2Ceil(nPerfEvents))) else UInt(0))
   val reg_hpmcounter = reg_hpmevent.map(e => WideCounter(64, ((UInt(0) +: io.events): Seq[UInt])(e)))
 

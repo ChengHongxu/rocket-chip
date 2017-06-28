@@ -7,7 +7,10 @@ import config._
 import rocket._
 import util._
 
-case object BuildCore extends Field[Parameters => CoreModule with HasCoreIO]
+/* Modified by ChengHongxu to easily access rocket core */
+// case object BuildCore extends Field[Parameters => CoreModule with HasCoreIO]
+case object BuildCore extends Field[Parameters => Rocket]
+
 case object XLen extends Field[Int]
 
 // These parameters can be varied per-core
@@ -84,5 +87,11 @@ trait HasCoreIO {
     val ptw = new DatapathPTWIO().flip
     val fpu = new FPUCoreIO().flip
     val rocc = new RoCCCoreIO().flip
+
+    // Add ipc port to expose instret and cycle
+    val ipc = new Bundle{
+      val instr = UInt(OUTPUT, 64.W)
+      val cycle = UInt(OUTPUT, 64.W)
+    }
   }
 }

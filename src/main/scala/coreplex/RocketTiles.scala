@@ -25,8 +25,9 @@ trait HasRocketTiles extends CoreplexRISCVPlatform {
 
   // TODO: hack to fix deduplication; see PR https://github.com/ucb-bar/berkeley-hardfloat/pull/14
   hardfloat.consts
-
-  val rocketWires: Seq[HasRocketTilesBundle => Unit] = configs.zipWithIndex.map { case (c, i) =>
+  
+  // Modified rocketWires to get access to tile <ChengHongxu>
+  val rocketWires: Seq[(HasRocketTilesBundle => Unit, Option[RocketTile])] = configs.zipWithIndex.map { case (c, i) =>
     val pWithExtra = p.alterPartial {
       case TileKey => c
       case BuildRoCC => c.rocc
@@ -51,12 +52,13 @@ trait HasRocketTiles extends CoreplexRISCVPlatform {
         l1tol2.node :=* buffer.node
         tile.slaveNode :*= cbus.node
         tile.intNode := intBar.intnode
-        (io: HasRocketTilesBundle) => {
+        ((io: HasRocketTilesBundle) => {
           // leave clock as default (simpler for hierarchical PnR)
           tile.module.io.hartid := UInt(i)
           tile.module.io.resetVector := io.resetVector
           debugNode.bundleOut(0)(0) := debug.module.io.debugInterrupts(i)
-        }
+        },
+        Some(tile))
       }
       case Asynchronous(depth, sync) => {
         val wrapper = LazyModule(new AsyncRocketTile(c, i)(pWithExtra))
@@ -67,13 +69,14 @@ trait HasRocketTiles extends CoreplexRISCVPlatform {
         wrapper.slaveNode :*= source.node
         wrapper.intNode := intBar.intnode
         source.node :*= cbus.node
-        (io: HasRocketTilesBundle) => {
+        ((io: HasRocketTilesBundle) => {
           wrapper.module.clock := io.tcrs(i).clock
           wrapper.module.reset := io.tcrs(i).reset
           wrapper.module.io.hartid := UInt(i)
           wrapper.module.io.resetVector := io.resetVector
           debugNode.bundleOut(0)(0) := debug.module.io.debugInterrupts(i)
-        }
+        },
+        None)
       }
       case Rational => {
         val wrapper = LazyModule(new RationalRocketTile(c, i)(pWithExtra))
@@ -84,13 +87,14 @@ trait HasRocketTiles extends CoreplexRISCVPlatform {
         wrapper.slaveNode :*= source.node
         wrapper.intNode := intBar.intnode
         source.node :*= cbus.node
-        (io: HasRocketTilesBundle) => {
+        ((io: HasRocketTilesBundle) => {
           wrapper.module.clock := io.tcrs(i).clock
           wrapper.module.reset := io.tcrs(i).reset
           wrapper.module.io.hartid := UInt(i)
           wrapper.module.io.resetVector := io.resetVector
           debugNode.bundleOut(0)(0) := debug.module.io.debugInterrupts(i)
-        }
+        },
+        None)
       }
     }
   }
@@ -102,10 +106,23 @@ trait HasRocketTilesBundle extends CoreplexRISCVPlatformBundle {
     val clock = Clock(INPUT)
     val reset = Bool(INPUT)
   })
+
+  // Add ipc port to expose instret and cycle
+  val ipc = new Bundle{
+    val instr = UInt(OUTPUT, 64.W)
+    val cycle = UInt(OUTPUT, 64.W)
+  }
 }
 
 trait HasRocketTilesModule extends CoreplexRISCVPlatformModule {
   val outer: HasRocketTiles
   val io: HasRocketTilesBundle
-  outer.rocketWires.foreach { _(io) }
+  outer.rocketWires.foreach { _._1(io) }
+
+  val rocketTile = outer.rocketWires(0)._2.get
+  require(rocketTile != null, s"rocketTile is empty, there is no Synchronous Tile in the SoC")
+
+  // connect cycle and instret of CSRFile to IPCPort <ChengHongxu>
+  io.ipc.instr := rocketTile.module.io.ipc.instr
+  io.ipc.cycle := rocketTile.module.io.ipc.cycle
 }

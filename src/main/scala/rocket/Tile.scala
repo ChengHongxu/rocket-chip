@@ -113,7 +113,14 @@ class RocketTile(val rocketParams: RocketTileParams, val hartid: Int)(implicit p
 }
 
 class RocketTileBundle(outer: RocketTile) extends BaseTileBundle(outer)
-    with CanHaveScratchpadBundle
+    with CanHaveScratchpadBundle{
+      
+  // Add ipc port to expose instret and cycle
+  val ipc = new Bundle{
+    val instr = UInt(OUTPUT, 64.W)
+    val cycle = UInt(OUTPUT, 64.W)
+  }
+}
 
 class RocketTileModule(outer: RocketTile) extends BaseTileModule(outer, () => new RocketTileBundle(outer))
     with CanHaveLegacyRoccsModule
@@ -140,6 +147,10 @@ class RocketTileModule(outer: RocketTile) extends BaseTileModule(outer, () => ne
   core.io.interrupts.mtip  := io.interrupts(0)(2)
   core.io.interrupts.meip  := io.interrupts(0)(3)
   core.io.interrupts.seip.foreach { _ := io.interrupts(0)(4) }
+
+  // connect cycle and instret of CSRFile to IPCPort <ChengHongxu>
+  io.ipc.instr := core.io.ipc.instr
+  io.ipc.cycle := core.io.ipc.cycle
 
   // TODO eliminate this redundancy
   val h = dcachePorts.size

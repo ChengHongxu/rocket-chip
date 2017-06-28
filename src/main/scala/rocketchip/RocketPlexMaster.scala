@@ -25,6 +25,12 @@ trait RocketPlexMaster extends HasTopLevelNetworks {
 
 trait RocketPlexMasterBundle extends HasTopLevelNetworksBundle {
   val outer: RocketPlexMaster
+  
+  // Add ipc port to expose instret and cycle
+ // val ipc = new Bundle{
+  //   val instr = UInt(OUTPUT, 64.W)
+  //   val cycle = UInt(OUTPUT, 64.W)
+  // }
 }
 
 trait RocketPlexMasterModule extends HasTopLevelNetworksModule {
@@ -37,4 +43,8 @@ trait RocketPlexMasterModule extends HasTopLevelNetworksModule {
     tcr.clock := clock
     tcr.reset := reset
   }
+
+  // connect cycle and instret of CSRFile to IPCPort <ChengHongxu>
+  // io.ipc.instr := outer.coreplex.module.io.ipc.instr
+  // io.ipc.cycle := outer.coreplex.module.io.ipc.cycle
 }

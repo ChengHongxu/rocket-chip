@@ -172,6 +172,10 @@ class Rocket(implicit p: Parameters) extends CoreModule()(p)
   val id_do_fence = id_rocc_busy && id_ctrl.fence ||
     id_mem_busy && (id_ctrl.amo && id_amo_aq || id_ctrl.fence_i || id_reg_fence && (id_ctrl.mem || id_ctrl.rocc))
 
+  // connect cycle and instret of CSRFile to IPCPort <ChengHongxu>
+  io.ipc.instr := csr.io.ipc.instr
+  io.ipc.cycle := csr.io.ipc.cycle
+
   val bpu = Module(new BreakpointUnit(nBreakpoints))
   bpu.io.status := csr.io.status
   bpu.io.bp := csr.io.bp
