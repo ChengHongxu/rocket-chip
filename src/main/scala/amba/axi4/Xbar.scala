@@ -170,7 +170,7 @@ class AXI4Xbar(
     }
 
     // Fanout the input sources to the output sinks
-    def transpose[T](x: Seq[Seq[T]]) = Seq.tabulate(x(0).size) { i => Seq.tabulate(x.size) { j => x(j)(i) } }
+    def transpose[T](x: Seq[Seq[T]]) = if (x.isEmpty) Nil else Seq.tabulate(x(0).size) { i => Seq.tabulate(x.size) { j => x(j)(i) } }
     val portsAROI = transpose((in  zip requestARIO) map { case (i, r) => AXI4Xbar.fanout(i.ar, r) })
     val portsAWOI = transpose((in  zip requestAWIO) map { case (i, r) => AXI4Xbar.fanout(i.aw, r) })
     val portsWOI  = transpose((in  zip requestWIO)  map { case (i, r) => AXI4Xbar.fanout(i.w,  r) })
